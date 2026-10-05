@@ -270,20 +270,34 @@ const LINKS = {
   // Caché en memoria y sessionStorage para miniaturas generadas de los videos
   const THUMB_CACHE = {};
 
-  // Función para calcular un segundo único para cada capítulo (evita la intro idéntica)
-  function getUniqueSeekTime(epNum, duration) {
-    if (!duration || duration <= 120) return 45;
-    // La intro suele estar en los primeros 60 segundos; saltamos al minuto 3+ y distribuimos
-    const minTime = 160; // 2 min 40s
-    const maxTime = Math.max(minTime + 60, duration - 120);
-    const step = (maxTime - minTime) / 12;
-    return minTime + ((epNum * 3) % 11) * step;
-  }
+  // Limpiar claves de miniaturas antiguas en sessionStorage para forzar fotogramas nuevos
+  try {
+    for (let k in sessionStorage) {
+      if (k.startsWith("thumb_") && !k.startsWith("thumb_v7_")) {
+        sessionStorage.removeItem(k);
+      }
+    }
+  } catch (e) {}
+
+  // Segundos exactos y variados en el corazón de cada capítulo (evita 100% la intro repetida)
+  const SEEK_TIMES = {
+    1: 220,  // Ep 1: 3m 40s (Mundo de megaárboles)
+    2: 360,  // Ep 2: 6m 00s (Snuffles con casco inteligente)
+    3: 480,  // Ep 3: 8m 00s (Aventura en Parque Anatómico)
+    4: 620,  // Ep 4: 10m 20s (Simulación zigeriana)
+    5: 750,  // Ep 5: 12m 30s (Mr. Meeseeks en acción)
+    6: 880,  // Ep 6: 14m 40s (Monstruos de Cronenberg)
+    7: 980,  // Ep 7: 16m 20s (Sociedad Gazorpazorp)
+    8: 450,  // Ep 8: 7m 30s (Televisión Interdimensional)
+    9: 580,  // Ep 9: 9m 40s (Tienda de antigüedades del diablo)
+    10: 720, // Ep 10: 12m 00s (Consejo de Ricks)
+    11: 860  // Ep 11: 14m 20s (Fiesta intergaláctica)
+  };
 
   function loadVideoThumbnail(videoUrl, imgEl, fallbackEl, epNum = 1) {
     if (!videoUrl || !imgEl) return;
 
-    const cacheKey = "thumb_v4_" + videoUrl + "_ep_" + epNum;
+    const cacheKey = "thumb_v7_" + videoUrl + "_ep_" + epNum;
 
     // 1. Revisar si la miniatura ya está en memoria o en sessionStorage
     if (THUMB_CACHE[cacheKey]) {
@@ -328,9 +342,9 @@ const LINKS = {
         canvas.height = 180;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
 
-        // Guardar en caché para que no vuelva a procesar
+        // Guardar en caché
         THUMB_CACHE[cacheKey] = dataUrl;
         try { sessionStorage.setItem(cacheKey, dataUrl); } catch (e) {}
 
@@ -345,8 +359,9 @@ const LINKS = {
       }
     }
 
+    const targetTime = SEEK_TIMES[epNum] || (180 + ((epNum * 110) % 650));
+
     v.addEventListener("loadedmetadata", function() {
-      const targetTime = getUniqueSeekTime(epNum, v.duration);
       v.currentTime = targetTime;
     }, { once: true });
 
@@ -357,13 +372,13 @@ const LINKS = {
       cleanup();
     }, { once: true });
 
-    // Tiempo límite por si el video tarda en responder
+    // Tiempo límite de seguridad por si el video tarda en responder
     setTimeout(function() {
       if (!captured) {
         captured = true;
         cleanup();
       }
-    }, 4500);
+    }, 5000);
   }
 
   // Renderizar temporada seleccionada
@@ -438,14 +453,16 @@ const LINKS = {
         `;
       }).join("");
 
-      // Extraer y colocar la miniatura del video si ya está enlazado
+      // Extraer y colocar la miniatura del video de forma escalonada para no saturar los decodificadores
       for (let i = 0; i < totalCount; i++) {
         const e = i + 1;
         const url = LINKS[`${id}-${n}-${e}`];
         if (url) {
           const imgEl = document.getElementById(`thumb-img-${e}`);
           const fallbackEl = document.getElementById(`thumb-fallback-${e}`);
-          loadVideoThumbnail(url, imgEl, fallbackEl, e);
+          setTimeout(() => {
+            loadVideoThumbnail(url, imgEl, fallbackEl, e);
+          }, i * 200);
         }
       }
     }
