@@ -152,9 +152,13 @@ const LINKS = {
   // Reproducir episodio
   window.reproducir = function(url, seasonNum, epNum, epTitle) {
     currentPlayingEp = epNum;
-    
-    // Ocultar mensaje de fallback
-    if (fallbackBox) fallbackBox.style.display = "none";
+
+    const hideFallback = () => {
+      if (fallbackBox) fallbackBox.style.display = "none";
+    };
+
+    // Ocultar mensaje de fallback inicialmente
+    hideFallback();
 
     // Actualizar barra de estado del reproductor
     if (playerStatus) {
@@ -167,28 +171,35 @@ const LINKS = {
 
     // Configurar video
     if (videoEl) {
-      videoEl.pause();
-      videoEl.src = url;
-      videoEl.load();
-      
-      const playPromise = videoEl.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          // El archivo local no existe o fallo de codec
-          console.warn("Aviso de reproducción:", err);
-          if (fallbackBox && fallbackPath) {
-            fallbackBox.style.display = "flex";
-            fallbackPath.textContent = url;
-          }
-        });
-      }
+      // Limpiar listeners previos para evitar cruces
+      videoEl.onplaying = hideFallback;
+      videoEl.oncanplay = hideFallback;
+      videoEl.onloadeddata = hideFallback;
 
+      // Solo mostrar fallback si realmente hay un error 404 o falla irrecuperable del archivo
       videoEl.onerror = function() {
-        if (fallbackBox && fallbackPath) {
+        if (videoEl.error && fallbackBox && fallbackPath) {
           fallbackBox.style.display = "flex";
           fallbackPath.textContent = url;
         }
       };
+
+      videoEl.pause();
+      // encodeURI asegura compatibilidad con tildes y caracteres especiales en Nginx / Linux
+      videoEl.src = encodeURI(url);
+      videoEl.load();
+
+      const playPromise = videoEl.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          hideFallback();
+        }).catch(err => {
+          // Si el navegador bloquea la reproducción automática con audio por política de seguridad,
+          // NO es un error de archivo: el video ya está cargado y el usuario solo debe pulsar Play.
+          console.log("Autoplay con audio requiere interacción o fue pausado:", err.name);
+          hideFallback();
+        });
+      }
     }
 
     // Mostrar el contenedor del reproductor
@@ -259,10 +270,20 @@ const LINKS = {
   // Caché en memoria y sessionStorage para miniaturas generadas de los videos
   const THUMB_CACHE = {};
 
-  function loadVideoThumbnail(videoUrl, imgEl, fallbackEl, seekTime = 12) {
+  // Función para calcular un segundo único para cada capítulo (evita la intro idéntica)
+  function getUniqueSeekTime(epNum, duration) {
+    if (!duration || duration <= 120) return 45;
+    // La intro suele estar en los primeros 60 segundos; saltamos al minuto 3+ y distribuimos
+    const minTime = 160; // 2 min 40s
+    const maxTime = Math.max(minTime + 60, duration - 120);
+    const step = (maxTime - minTime) / 12;
+    return minTime + ((epNum * 3) % 11) * step;
+  }
+
+  function loadVideoThumbnail(videoUrl, imgEl, fallbackEl, epNum = 1) {
     if (!videoUrl || !imgEl) return;
 
-    const cacheKey = "thumb_" + videoUrl;
+    const cacheKey = "thumb_v4_" + videoUrl + "_ep_" + epNum;
 
     // 1. Revisar si la miniatura ya está en memoria o en sessionStorage
     if (THUMB_CACHE[cacheKey]) {
@@ -282,10 +303,10 @@ const LINKS = {
       }
     } catch (e) {}
 
-    // 2. Extraer un fotograma directamente del archivo de video mediante Canvas
+    // 2. Extraer un fotograma único directamente del archivo de video mediante Canvas
     const v = document.createElement("video");
     v.crossOrigin = "anonymous";
-    v.src = videoUrl;
+    v.src = encodeURI(videoUrl);
     v.muted = true;
     v.playsInline = true;
     v.preload = "metadata";
@@ -325,7 +346,8 @@ const LINKS = {
     }
 
     v.addEventListener("loadedmetadata", function() {
-      v.currentTime = Math.min(seekTime, (v.duration && v.duration > 3) ? v.duration * 0.15 : 1);
+      const targetTime = getUniqueSeekTime(epNum, v.duration);
+      v.currentTime = targetTime;
     }, { once: true });
 
     v.addEventListener("seeked", captureFrame, { once: true });
@@ -341,7 +363,7 @@ const LINKS = {
         captured = true;
         cleanup();
       }
-    }, 4000);
+    }, 4500);
   }
 
   // Renderizar temporada seleccionada
@@ -423,7 +445,7 @@ const LINKS = {
         if (url) {
           const imgEl = document.getElementById(`thumb-img-${e}`);
           const fallbackEl = document.getElementById(`thumb-fallback-${e}`);
-          loadVideoThumbnail(url, imgEl, fallbackEl, 15);
+          loadVideoThumbnail(url, imgEl, fallbackEl, e);
         }
       }
     }
