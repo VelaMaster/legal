@@ -905,6 +905,9 @@ h3 {
 /* Selector de Temporadas y Lista de Episodios */
 .seasons-section {
   margin-top: 36px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .section-head {
@@ -950,21 +953,30 @@ h3 {
 /* Lista de Episodios */
 .eps {
   list-style: none;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .ep-item {
   background: var(--surface-card);
   border: 1px solid var(--outline-v);
   border-radius: var(--radius-md);
-  padding: 16px 20px;
+  padding: 14px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   transition: all 0.25s ease;
   animation: slideUp 0.4s ease backwards;
+  cursor: pointer;
+  overflow: hidden;
 }
 
 .ep-item:hover {
@@ -984,8 +996,9 @@ h3 {
   display: flex;
   align-items: center;
   gap: 16px;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .ep-thumb {
@@ -1000,15 +1013,7 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   transition: all 0.25s ease;
-}
-
-@media (max-width: 540px) {
-  .ep-thumb {
-    width: 92px;
-    height: 52px;
-  }
 }
 
 .ep-thumb-img {
@@ -1077,31 +1082,47 @@ h3 {
   transform: scale(1.15);
 }
 
-.ep-num {
-  font: 700 1.1rem var(--mono);
-  color: var(--primary);
-  background: color-mix(in srgb, var(--primary-c) 40%, transparent);
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-sm);
+.ep-details {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ep-title-line {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.ep-details {
+  gap: 8px;
   min-width: 0;
+  overflow: hidden;
 }
 
-.ep-title {
-  font-size: 1.05rem;
+.ep-title-text {
+  font-size: 1.02rem;
   font-weight: 600;
   color: var(--on-surface);
-  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: block;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ep-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  font-size: 0.84rem;
+  color: var(--on-surface-v);
+}
+
+.ep-tag-num {
+  font: 600 0.75rem var(--mono);
+  color: var(--primary);
+  background: var(--primary-c);
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 
 .ep-desc {
@@ -1112,6 +1133,7 @@ h3 {
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.4;
+  margin-top: 4px;
 }
 
 .ep-actions {
@@ -1121,7 +1143,39 @@ h3 {
   flex-shrink: 0;
 }
 
+.ep-btn-play {
+  height: 38px;
+  padding: 0 16px;
+  font-size: 0.88rem;
+  gap: 6px;
+}
+
+.ep-btn-play svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ep-btn-dl {
+  height: 38px;
+  width: 38px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ep-btn-dl svg {
+  width: 18px;
+  height: 18px;
+}
+
 @media (max-width: 640px) {
+  /* Envoltorio responsivo en pantallas pequeñas */
+  .wrap {
+    width: min(960px, 100% - 20px);
+    padding-block: 16px 44px;
+  }
+
   /* Navbar ultracompacto en móviles */
   .site-nav {
     height: 52px;
@@ -1160,64 +1214,91 @@ h3 {
     height: 15px;
   }
 
-  /* Tarjeta de capítulo compacta y horizontal (sin desbordes verticales) */
+  /* Tarjeta de capítulo 100% adaptativa sin desborde horizontal ni vertical */
   .ep-item {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
     padding: 10px 12px;
     gap: 10px;
+    width: 100%;
+    max-width: 100%;
     min-height: auto;
+    box-sizing: border-box;
+    overflow: hidden;
   }
 
   .ep-info {
     gap: 10px;
+    flex: 1 1 0;
     min-width: 0;
+    overflow: hidden;
   }
 
   .ep-thumb {
-    width: 88px;
-    height: 50px;
+    width: 82px;
+    height: 48px;
     border-radius: 6px;
+    flex-shrink: 0;
   }
 
   .ep-details {
+    flex: 1 1 0;
     min-width: 0;
-  }
-
-  .ep-title {
-    font-size: 0.88rem;
-    margin-bottom: 2px;
-  }
-
-  .ep-desc {
-    font-size: 0.76rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
     overflow: hidden;
-    line-height: 1.3;
+  }
+
+  .ep-title-line {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .ep-title-text {
+    font-size: 0.88rem;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .ep-meta-line {
+    font-size: 0.74rem;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .ep-tag-num {
+    font-size: 0.7rem;
+    padding: 1px 4px;
+  }
+
+  /* Ocultar descripción larga en móvil para mantener la tarjeta perfectamente horizontal */
+  .ep-desc {
+    display: none;
   }
 
   .ep-actions {
-    gap: 6px;
-  }
-
-  .ep-actions .btn {
-    height: 32px;
-    padding: 0 10px;
-    font-size: 0.78rem;
     gap: 4px;
+    flex-shrink: 0;
   }
 
-  .ep-actions .btn svg {
-    width: 14px;
-    height: 14px;
+  /* Ocultar botón de descarga en celular para liberar espacio al título */
+  .ep-btn-dl {
+    display: none !important;
   }
 
-  .ep-actions .btn.ghost {
-    width: 32px;
-    padding: 0;
+  /* Botón de reproducción compacto */
+  .ep-btn-play {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 0.78rem !important;
+    gap: 4px !important;
+  }
+
+  .ep-btn-play svg {
+    width: 14px !important;
+    height: 14px !important;
   }
 
   /* Ajustes de Hero en móvil */
@@ -1240,18 +1321,60 @@ h3 {
   .s-head h1.big {
     font-size: 1.6rem;
   }
+
+  /* Reproductor teatral en móvil */
+  .theater-player-container {
+    margin-bottom: 24px;
+    border-radius: var(--radius-sm);
+  }
+  .player-header {
+    padding: 8px 12px;
+  }
+  .player-title {
+    max-width: calc(100% - 36px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.82rem;
+  }
+  .player-nav-controls {
+    padding: 8px 12px;
+  }
+  .player-nav-controls .btn {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 0.78rem !important;
+  }
 }
 
-@media (max-width: 380px) {
+@media (max-width: 400px) {
+  .wrap {
+    width: min(960px, 100% - 16px);
+  }
   .nav-btn span {
     display: none;
   }
   .nav-btn {
     padding: 0 8px;
   }
+  .ep-item {
+    padding: 8px 10px;
+    gap: 8px;
+  }
   .ep-thumb {
-    width: 76px;
-    height: 44px;
+    width: 74px;
+    height: 42px;
+  }
+  .ep-title-text {
+    font-size: 0.84rem;
+  }
+  .ep-btn-play span {
+    display: none;
+  }
+  .ep-btn-play {
+    width: 32px !important;
+    padding: 0 !important;
+    justify-content: center !important;
   }
 }
 

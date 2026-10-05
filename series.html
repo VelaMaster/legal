@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="theme.js?v=11"></script>
-  <link rel="stylesheet" href="styles.css?v=11">
+  <script src="theme.js?v=12"></script>
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
   <!-- Barra de navegación superior -->
@@ -103,6 +103,7 @@
           <h3>Video local en preparación</h3>
           <p id="fallback-message">El archivo multimedia aún no se encuentra alojado en esta ruta local.</p>
           <span class="badge" id="fallback-path" style="font-family: var(--mono); word-break: break-all;"></span>
+          <button type="button" class="btn ghost" id="fallback-dismiss-btn" style="height: 32px; padding: 0 16px; font-size: 0.82rem; margin-top: 8px;" onclick="document.getElementById('player-fallback').style.display='none'">✕ Descartar aviso</button>
         </div>
       </div>
 
@@ -198,9 +199,9 @@
   <!-- Notificación Toast -->
   <div class="toast" id="toast">Enlace copiado al portapapeles</div>
 
-  <script src="track.js?v=11"></script>
-  <script src="series.js?v=11"></script>
-  <script src="script.js?v=11"></script>
+  <script src="track.js?v=12"></script>
+  <script src="series.js?v=12"></script>
+  <script src="script.js?v=12"></script>
   <script>
     // Manejo de compartir en la navbar
     (function() {

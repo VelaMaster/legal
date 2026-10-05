@@ -157,7 +157,7 @@ const LINKS = {
       if (fallbackBox) fallbackBox.style.display = "none";
     };
 
-    // Ocultar mensaje de fallback inicialmente
+    // Ocultar mensaje de fallback inmediatamente
     hideFallback();
 
     // Actualizar barra de estado del reproductor
@@ -171,21 +171,48 @@ const LINKS = {
 
     // Configurar video
     if (videoEl) {
-      // Limpiar listeners previos para evitar cruces
+      delete videoEl.dataset.triedClean;
+
+      // Listeners para asegurar que el overlay NUNCA tape el video cuando esté activo
       videoEl.onplaying = hideFallback;
+      videoEl.onplay = hideFallback;
+      videoEl.ontimeupdate = hideFallback;
       videoEl.oncanplay = hideFallback;
       videoEl.onloadeddata = hideFallback;
+      videoEl.onseeked = hideFallback;
 
-      // Solo mostrar fallback si realmente hay un error 404 o falla irrecuperable del archivo
       videoEl.onerror = function() {
-        if (videoEl.error && fallbackBox && fallbackPath) {
-          fallbackBox.style.display = "flex";
-          fallbackPath.textContent = url;
+        // Ignorar abortos por cambio de pista o pausa
+        if (!videoEl.error || videoEl.error.code === 1) return;
+
+        // Si ya cargó duración, metadatos o tiempo actual, el archivo existe: no tapar el reproductor
+        if (videoEl.readyState >= 1 || videoEl.duration > 0 || videoEl.currentTime > 0) {
+          hideFallback();
+          return;
+        }
+
+        // Si falló por URL con acentos (código 4), intentar automáticamente la ruta sin acentos
+        const cleanUrl = url.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (cleanUrl !== url && !videoEl.dataset.triedClean) {
+          videoEl.dataset.triedClean = "1";
+          console.log("Reintentando con URL sin tildes:", cleanUrl);
+          videoEl.src = encodeURI(cleanUrl);
+          videoEl.load();
+          videoEl.play().then(hideFallback).catch(hideFallback);
+          return;
+        }
+
+        // Solo si definitivamente falló al inicio y no tiene metadatos:
+        if (videoEl.error.code === 4 && videoEl.readyState === 0) {
+          if (fallbackBox && fallbackPath) {
+            fallbackBox.style.display = "flex";
+            fallbackPath.textContent = url;
+          }
         }
       };
 
       videoEl.pause();
-      // encodeURI asegura compatibilidad con tildes y caracteres especiales en Nginx / Linux
+      // encodeURI asegura compatibilidad con caracteres en Nginx / Linux
       videoEl.src = encodeURI(url);
       videoEl.load();
 
@@ -194,8 +221,6 @@ const LINKS = {
         playPromise.then(() => {
           hideFallback();
         }).catch(err => {
-          // Si el navegador bloquea la reproducción automática con audio por política de seguridad,
-          // NO es un error de archivo: el video ya está cargado y el usuario solo debe pulsar Play.
           console.log("Autoplay con audio requiere interacción o fue pausado:", err.name);
           hideFallback();
         });
@@ -245,6 +270,13 @@ const LINKS = {
     const epData = (s.episodes && s.episodes[seasonNum] && s.episodes[seasonNum][epNum - 1]) || { title: `Episodio ${epNum}` };
     const url = LINKS[`${id}-${seasonNum}-${epNum}`] || `videos/${id}/T${seasonNum}/ep-${epNum}.mp4`;
     window.reproducir(url, seasonNum, epNum, epData.title);
+  }
+
+  // Descartar aviso de fallback al hacer clic
+  if (fallbackBox) {
+    fallbackBox.addEventListener("click", () => {
+      fallbackBox.style.display = "none";
+    });
   }
 
   // Cerrar reproductor
@@ -402,9 +434,9 @@ const LINKS = {
         const isPlaying = currentPlayingEp === e;
 
         return `
-          <li class="ep-item ${isPlaying ? 'now-playing' : ''}" data-ep="${e}">
+          <li class="ep-item ${isPlaying ? 'now-playing' : ''}" data-ep="${e}" ${url ? `onclick="reproducir('${url}', ${n}, ${e}, '${info.title.replace(/'/g, "\\'")}')"` : ''} title="${url ? 'Reproducir ' + info.title : 'Próximamente'}">
             <div class="ep-info">
-              <div class="ep-thumb" ${url ? `onclick="reproducir('${url}', ${n}, ${e}, '${info.title.replace(/'/g, "\\'")}')"` : ''} title="${url ? 'Reproducir ' + info.title : 'Próximamente'}">
+              <div class="ep-thumb">
                 <span class="ep-num-fallback" id="thumb-fallback-${e}">${e}</span>
                 ${url ? `
                   <img class="ep-thumb-img" id="thumb-img-${e}" alt="Miniatura ${info.title}" style="display: none;" loading="lazy">
@@ -415,29 +447,32 @@ const LINKS = {
                 <span class="ep-badge-overlay">E${e}</span>
               </div>
               <div class="ep-details">
-                <div class="ep-title">
-                  <span>${info.title}</span>
-                  <span class="meta" style="margin-left: 8px; font-weight: normal;">• ${info.duration || '24 min'}</span>
+                <div class="ep-title-line">
+                  <span class="ep-title-text">${info.title}</span>
                   <span class="equalizer" style="display: ${isPlaying ? 'inline-flex' : 'none'};">
                     <span class="eq-bar"></span>
                     <span class="eq-bar"></span>
                     <span class="eq-bar"></span>
                   </span>
                 </div>
+                <div class="ep-meta-line">
+                  <span class="ep-tag-num">Cap. ${e}</span>
+                  <span class="ep-meta-dur">${info.duration || '24 min'}</span>
+                </div>
                 <p class="ep-desc">${info.desc}</p>
               </div>
             </div>
             <div class="ep-actions">
               ${url ? `
-                <button type="button" class="btn filled" style="height: 38px; padding: 0 16px; font-size: 0.88rem;" onclick="reproducir('${url}', ${n}, ${e}, '${info.title.replace(/'/g, "\\'")}')">
-                  <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M8 5v14l11-7z"/></svg>
+                <button type="button" class="btn filled ep-btn-play" onclick="event.stopPropagation(); reproducir('${url}', ${n}, ${e}, '${info.title.replace(/'/g, "\\'")}')">
+                  <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                   <span>Ver</span>
                 </button>
-                <a class="btn ghost" style="height: 38px; padding: 0 14px; font-size: 0.88rem;" href="${url}" download title="Descargar archivo multimedia">
-                  <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                <a class="btn ghost ep-btn-dl" href="${url}" download title="Descargar" onclick="event.stopPropagation();">
+                  <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                 </a>
               ` : `
-                <span class="badge" style="padding: 6px 12px; font-size: 0.85rem;">Próximamente</span>
+                <span class="badge">Próximamente</span>
               `}
             </div>
           </li>
