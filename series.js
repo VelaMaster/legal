@@ -267,39 +267,32 @@ const LINKS = {
     });
   }
 
-  // Caché en memoria y sessionStorage para miniaturas generadas de los videos
+  // Caché en memoria y sessionStorage para miniaturas generadas
   const THUMB_CACHE = {};
-
-  // Limpiar claves de miniaturas antiguas en sessionStorage para forzar fotogramas nuevos
-  try {
-    for (let k in sessionStorage) {
-      if (k.startsWith("thumb_") && !k.startsWith("thumb_v7_")) {
-        sessionStorage.removeItem(k);
-      }
-    }
-  } catch (e) {}
-
-  // Segundos exactos y variados en el corazón de cada capítulo (evita 100% la intro repetida)
-  const SEEK_TIMES = {
-    1: 220,  // Ep 1: 3m 40s (Mundo de megaárboles)
-    2: 360,  // Ep 2: 6m 00s (Snuffles con casco inteligente)
-    3: 480,  // Ep 3: 8m 00s (Aventura en Parque Anatómico)
-    4: 620,  // Ep 4: 10m 20s (Simulación zigeriana)
-    5: 750,  // Ep 5: 12m 30s (Mr. Meeseeks en acción)
-    6: 880,  // Ep 6: 14m 40s (Monstruos de Cronenberg)
-    7: 980,  // Ep 7: 16m 20s (Sociedad Gazorpazorp)
-    8: 450,  // Ep 8: 7m 30s (Televisión Interdimensional)
-    9: 580,  // Ep 9: 9m 40s (Tienda de antigüedades del diablo)
-    10: 720, // Ep 10: 12m 00s (Consejo de Ricks)
-    11: 860  // Ep 11: 14m 20s (Fiesta intergaláctica)
-  };
 
   function loadVideoThumbnail(videoUrl, imgEl, fallbackEl, epNum = 1) {
     if (!videoUrl || !imgEl) return;
 
-    const cacheKey = "thumb_v7_" + videoUrl + "_ep_" + epNum;
+    // 1. Prioridad máxima: ¿Existe la miniatura estática generada en el servidor?
+    // (Ej. img/episodes/rick-1-1.jpg). Carga en milisegundos y tiene 0% de impacto en servidor/red.
+    const staticThumbUrl = `img/episodes/${id}-${currentSeason}-${epNum}.jpg`;
+    const staticImg = new Image();
+    staticImg.onload = function() {
+      imgEl.src = staticThumbUrl;
+      imgEl.style.display = "block";
+      if (fallbackEl) fallbackEl.style.display = "none";
+    };
+    staticImg.onerror = function() {
+      // 2. Si no hay archivo estático generado en disco, extraer del inicio del video
+      extractFastVideoFrame(videoUrl, imgEl, fallbackEl, epNum);
+    };
+    staticImg.src = staticThumbUrl;
+  }
 
-    // 1. Revisar si la miniatura ya está en memoria o en sessionStorage
+  function extractFastVideoFrame(videoUrl, imgEl, fallbackEl, epNum) {
+    const cacheKey = `thumb_v9_${videoUrl}_${epNum}`;
+
+    // Revisar si ya está en caché de memoria o sessionStorage
     if (THUMB_CACHE[cacheKey]) {
       imgEl.src = THUMB_CACHE[cacheKey];
       imgEl.style.display = "block";
@@ -317,15 +310,18 @@ const LINKS = {
       }
     } catch (e) {}
 
-    // 2. Extraer un fotograma único directamente del archivo de video mediante Canvas
+    // Tomar fotograma en los primeros 25 segundos (donde cada capítulo tiene un inicio diferente)
+    // Al estar al inicio, el navegador no tiene que descargar megabytes ni hacer Range complejos
+    const seekTime = Math.min(3 + ((epNum * 2) % 22), 25);
+
     const v = document.createElement("video");
-    v.crossOrigin = "anonymous";
+    // Sin crossOrigin="anonymous" para evitar bloqueos de CORS en servidores Nginx con rutas relativas
     v.src = encodeURI(videoUrl);
     v.muted = true;
     v.playsInline = true;
-    v.preload = "metadata";
+    v.preload = "auto";
 
-    let captured = false;
+    let done = false;
 
     function cleanup() {
       v.pause();
@@ -333,52 +329,47 @@ const LINKS = {
       v.load();
     }
 
-    function captureFrame() {
-      if (captured) return;
-      captured = true;
+    function doCapture() {
+      if (done) return;
+      done = true;
       try {
         const canvas = document.createElement("canvas");
-        canvas.width = 320;
-        canvas.height = 180;
+        canvas.width = 240;
+        canvas.height = 135;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
 
-        // Guardar en caché
         THUMB_CACHE[cacheKey] = dataUrl;
         try { sessionStorage.setItem(cacheKey, dataUrl); } catch (e) {}
 
-        // Aplicar a la imagen de la tarjeta del capítulo
         imgEl.src = dataUrl;
         imgEl.style.display = "block";
         if (fallbackEl) fallbackEl.style.display = "none";
       } catch (err) {
-        console.warn("No se pudo extraer frame del video:", err);
+        console.warn("Extracción de miniatura omitida:", err);
       } finally {
         cleanup();
       }
     }
 
-    const targetTime = SEEK_TIMES[epNum] || (180 + ((epNum * 110) % 650));
-
     v.addEventListener("loadedmetadata", function() {
-      v.currentTime = targetTime;
+      v.currentTime = seekTime;
     }, { once: true });
 
-    v.addEventListener("seeked", captureFrame, { once: true });
+    v.addEventListener("seeked", doCapture, { once: true });
 
     v.addEventListener("error", function() {
-      captured = true;
+      done = true;
       cleanup();
     }, { once: true });
 
-    // Tiempo límite de seguridad por si el video tarda en responder
     setTimeout(function() {
-      if (!captured) {
-        captured = true;
+      if (!done) {
+        done = true;
         cleanup();
       }
-    }, 5000);
+    }, 3500);
   }
 
   // Renderizar temporada seleccionada
