@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /videos/
+Disallow: /server.py
+Disallow: /comments.db
+Disallow: /README_BDD.md
+Disallow: /subir_peacemaker.sh
+Disallow: /convertir_peacemaker_server.sh
+Disallow: /generate_thumbs.py
+
+Sitemap: https://hasclic.com/sitemap.xml

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00f2fe" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#006A60" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="100%" stop-color="#4facfe"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4facfe"/>
+      <stop offset="100%" stop-color="#00f2fe"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0c0e14"/>
+  <circle cx="32" cy="32" r="24" fill="url(#glow)"/>
+  <!-- Orbital Outer Ring -->
+  <ellipse cx="32" cy="32" rx="20" ry="10" fill="none" stroke="url(#ring1)" stroke-width="2.5" transform="rotate(-30 32 32)"/>
+  <!-- Orbital Cross Ring -->
+  <ellipse cx="32" cy="32" rx="20" ry="10" fill="none" stroke="url(#ring1)" stroke-width="2.5" stroke-dasharray="3 3" transform="rotate(35 32 32)"/>
+  <!-- Plasma Core -->
+  <circle cx="32" cy="32" r="7" fill="url(#core)"/>
+</svg>
